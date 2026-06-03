@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import select
 import socket
+import sys
 import time
 from datetime import datetime, timezone
 from urllib.parse import urlparse
@@ -28,11 +29,6 @@ _DEPRECATED_TLS = frozenset({"SSLv2", "SSLv3", "TLSv1", "TLSv1.1"})
 
 
 def check_cert(target: str, timeout: float = 5.0) -> dict:
-    """Return a dict with cert info and an issues list.
-
-    result["ok"]     — False if any critical issue exists
-    result["issues"] — list of {"level": "critical"|"warn"|"info", "msg": str}
-    """
     host, port = _parse(target)
     chain, tls_version, cipher = _connect(host, port, timeout)
 
@@ -94,8 +90,6 @@ def check_cert(target: str, timeout: float = 5.0) -> dict:
         "ok": not any(i["level"] == "critical" for i in issues),
     }
 
-
-# ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _parse(raw: str) -> tuple[str, int]:
     if "://" not in raw:
@@ -185,10 +179,43 @@ def _key_issues(pub, issues: list[dict]) -> None:
 
 
 if __name__ == "__main__":
-    import json
-    import sys
-
     target = sys.argv[1] if len(sys.argv) > 1 else "example.com"
-    result = check_cert(target)
-    print(json.dumps(result, indent=2))
+    
+    try:
+        result = check_cert(target)
+    except Exception as e:
+        print(f"Error checking {target}: {e}")
+        sys.exit(3)
+
+    print(f"\n=== TLS CERTIFICATE REPORT FOR: {result['host']}:{result['port']} ===")
+    print(f"{'Property':<18} | {'Value'}")
+    print("-" * 60)
+    print(f"{'Status':<18} | {'PASS (OK)' if result['ok'] else 'FAIL (CRITICAL)'}")
+    print(f"{'Common Name (CN)':<18} | {result['cn']}")
+    print(f"{'Days Remaining':<18} | {result['days_left']} days")
+    print(f"{'Valid From':<18} | {result['not_before']}")
+    print(f"{'Valid Until':<18} | {result['not_after']}")
+    print(f"{'TLS Version':<18} | {result['tls_version']}")
+    print(f"{'Cipher Suite':<18} | {result['cipher']}")
+    print(f"{'Chain Length':<18} | {result['chain_length']} cert(s)")
+    print(f"{'Self-Signed?':<18} | {result['is_self_signed']}")
+
+    print(f"\n=== DISCOVERED ISSUES ({len(result['issues'])}) ===")
+    if result["issues"]:
+        print(f"{'Severity':<10} | {'Description'}")
+        print("-" * 60)
+        for issue in result["issues"]:
+            level_tag = issue["level"].upper()
+            if level_tag == "CRITICAL":
+                level_tag = "❌ CRIT"
+            elif level_tag == "WARN":
+                level_tag = "⚠️ WARN"
+            else:
+                level_tag = "ℹ️ INFO"
+                
+            print(f"{level_tag:<10} | {issue['msg']}")
+    else:
+        print("No issues found. Certificate looks healthy!")
+    print()
+
     sys.exit(2 if not result["ok"] else (1 if any(i["level"] == "warn" for i in result["issues"]) else 0))
