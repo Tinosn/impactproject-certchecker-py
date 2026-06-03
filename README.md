@@ -53,19 +53,25 @@ Exits with:
 
 ### Example output
 
-```json
-{
-  "host": "example.com",
-  "port": 443,
-  "cn": "example.com",
-  "days_left": 120,
-  "tls_version": "TLSv1.3",
-  "cipher": "TLS_AES_256_GCM_SHA384",
-  "is_self_signed": false,
-  "chain_length": 3,
-  "issues": [],
-  "ok": true
-}
+```bash
+=== TLS CERTIFICATE REPORT FOR: example.com:443 ===
+Property           | Value
+------------------------------------------------------------
+Status             | PASS (OK)
+Common Name (CN)   | example.com
+Days Remaining     | 87 days
+Valid From         | 2026-05-31T21:39:12+00:00
+Valid Until        | 2026-08-29T21:41:26+00:00
+TLS Version        | TLSv1.3
+Cipher Suite       | TLS_AES_256_GCM_SHA384
+Chain Length       | 4 cert(s)
+Self-Signed?       | False
+
+=== DISCOVERED ISSUES (1) ===
+Severity   | Description
+------------------------------------------------------------
+ℹ️ INFO    | Wildcard certificate
+
 ```
 
 ## Issue Levels
